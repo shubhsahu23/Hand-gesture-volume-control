@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GestureVolume | Smart Audio Control</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <main class="page-wrap">
+    <header class="hero">
+      <div class="hero-copy">
+        <p class="hero-kicker">Computer Vision Audio Interface</p>
+        <h1 class="app-title">Gesture Volume Control with Hand Gestures</h1>
+        <p class="hero-subtitle">A real-time hand tracking dashboard for touchless system volume control, built for fast feedback and stable operation.</p>
+        <div class="hero-tags">
+          <span>Live Webcam Inference</span>
+          <span>Realtime Volume Sync</span>
+          <span>Windows Optimized</span>
+        </div>
+      </div>
+      <div class="hero-metrics">
+        <article class="metric-card">
+          <p class="metric-label">System Volume</p>
+          <p id="hero-volume" class="metric-value">0.00%</p>
+        </article>
+        <article class="metric-card">
+          <p class="metric-label">Engine</p>
+          <p id="hero-engine" class="metric-value muted">Idle</p>
+        </article>
+      </div>
+    </header>
+
+    <section class="dashboard">
+      <article class="camera-panel">
+        <div class="panel-head">
+          <div>
+            <h2>Camera Feed</h2>
+            <p>Keep one hand inside frame for stable gesture detection.</p>
+          </div>
+          <p id="feed-state" class="feed-state idle">Standby</p>
+        </div>
+        <div class="camera-box">
+          <img id="camera-feed" src="{{ url_for('video_feed') }}" alt="Live camera feed">
+        </div>
+      </article>
+
+      <aside class="side-column">
+        <section class="card">
+          <h2>Camera Controls</h2>
+          <div class="control-actions">
+            <button id="start-btn" class="btn btn-start">Start</button>
+            <button id="pause-btn" class="btn btn-stop">Stop</button>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>System Status</h2>
+          <div class="status-grid">
+            <div class="status-item">
+              <p class="status-label">Camera</p>
+              <p id="camera-status" class="status-value waiting">Inactive</p>
+            </div>
+            <div class="status-item">
+              <p class="status-label">Gesture Status</p>
+              <p id="gesture-status" class="status-value waiting">Waiting</p>
+            </div>
+            <div class="status-item">
+              <p class="status-label">Gesture Type</p>
+              <p id="gesture-type" class="status-value">None</p>
+            </div>
+            <div class="status-item">
+              <p class="status-label">Gesture Quality</p>
+              <p id="gesture-quality" class="status-value good">Good</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>Volume Control</h2>
+          <div class="volume-widget">
+            <p id="volume-value" class="volume-value">0.00%</p>
+            <div class="volume-track">
+              <div id="volume-fill" class="volume-fill"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>Gesture Guide</h2>
+          <div class="guide-box">
+            <p class="guide-note">Use one hand and keep thumb + index tip visible.</p>
+            <ul class="guide-list">
+              <li><span>Volume Up</span><strong>Finger distance greater than 80 px</strong></li>
+              <li><span>Volume Down</span><strong>Finger distance less than 45 px</strong></li>
+              <li><span>Hold</span><strong>Finger distance between 45 and 80 px</strong></li>
+            </ul>
+          </div>
+        </section>
+      </aside>
+    </section>
+  </main>
+
+  <script>
+    const startBtn = document.getElementById("start-btn");
+    const pauseBtn = document.getElementById("pause-btn");
+    const cameraStatus = document.getElementById("camera-status");
+    const gestureStatus = document.getElementById("gesture-status");
+    const volumeValue = document.getElementById("volume-value");
+    const volumeFill = document.getElementById("volume-fill");
+    const heroVolume = document.getElementById("hero-volume");
+    const heroEngine = document.getElementById("hero-engine");
+    const feedState = document.getElementById("feed-state");
+    const gestureType = document.getElementById("gesture-type");
+    const gestureQuality = document.getElementById("gesture-quality");
+
+    pauseBtn.disabled = true;
+
+    function setStatusRunning() {
+      cameraStatus.textContent = "Active";
+      gestureStatus.textContent = "Running";
+      heroEngine.textContent = "Active";
+      heroEngine.classList.remove("muted");
+      feedState.textContent = "Live";
+      feedState.classList.remove("idle");
+      feedState.classList.add("live");
+      cameraStatus.classList.remove("waiting");
+      gestureStatus.classList.remove("waiting");
+    }
+
+    function setStatusWaiting() {
+      cameraStatus.textContent = "Inactive";
+      gestureStatus.textContent = "Waiting";
+      heroEngine.textContent = "Idle";
+      heroEngine.classList.add("muted");
+      feedState.textContent = "Standby";
+      feedState.classList.remove("live");
+      feedState.classList.add("idle");
+      cameraStatus.classList.add("waiting");
+      gestureStatus.classList.add("waiting");
+    }
+
+    function setGestureDetails(type, quality) {
+      gestureType.textContent = typeof type === "string" && type.length > 0 ? type : "None";
+      gestureQuality.textContent = typeof quality === "string" && quality.length > 0 ? quality : "Good";
+    }
+
+    function setVolume(volumePercent, volumeText) {
+      const parsed = Number(volumePercent);
+      const numeric = Number.isFinite(parsed) ? Math.min(100, Math.max(0, parsed)) : 0;
+      const text = typeof volumeText === "string" && volumeText.length > 0 ? volumeText : `${numeric.toFixed(2)}%`;
+      volumeValue.textContent = text;
+      heroVolume.textContent = text;
+      volumeFill.style.width = `${numeric}%`;
+    }
+
+    async function syncStatus() {
+      try {
+        const response = await fetch(`/status?t=${Date.now()}`, { cache: "no-store" });
+        if (!response.ok) {
+          return;
+        }
+        const data = await response.json();
+
+        if (data.running) {
+          setStatusRunning();
+          startBtn.textContent = "Running";
+          startBtn.disabled = true;
+          pauseBtn.disabled = false;
+        } else {
+          setStatusWaiting();
+          startBtn.textContent = "Start";
+          startBtn.disabled = false;
+          pauseBtn.disabled = true;
+        }
+
+        setVolume(data.volume_percent, data.volume_text);
+        setGestureDetails(data.gesture_type, data.gesture_quality);
+      } catch (error) {
+      }
+    }
+
+    async function syncVolume() {
+      try {
+        const response = await fetch(`/volume?t=${Date.now()}`, { cache: "no-store" });
+        if (!response.ok) {
+          return;
+        }
+        const data = await response.json();
+        setVolume(data.volume_percent, data.volume_text);
+      } catch (error) {
+      }
+    }
+
+    async function startGestureControl() {
+      startBtn.disabled = true;
+      startBtn.textContent = "Starting...";
+
+      try {
+        const response = await fetch("/start", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to start gesture control");
+        }
+
+        const data = await response.json();
+
+        if (data.status === "started" || data.status === "already_running") {
+          startBtn.textContent = "Running";
+          pauseBtn.disabled = false;
+          setStatusRunning();
+        } else {
+          startBtn.disabled = false;
+          startBtn.textContent = "Start";
+        }
+      } catch (error) {
+        startBtn.disabled = false;
+        startBtn.textContent = "Start";
+      }
+    }
+
+    async function pauseGestureControl() {
+      pauseBtn.disabled = true;
+
+      try {
+        const response = await fetch("/pause", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to stop gesture control");
+        }
+
+        const data = await response.json();
+
+        if (data.status === "paused" || data.status === "not_running") {
+          startBtn.disabled = false;
+          startBtn.textContent = "Start";
+          setStatusWaiting();
+        }
+      } catch (error) {
+      } finally {
+        if (startBtn.textContent === "Running") {
+          pauseBtn.disabled = false;
+        }
+      }
+    }
+
+    startBtn.addEventListener("click", startGestureControl);
+    pauseBtn.addEventListener("click", pauseGestureControl);
+    setInterval(syncStatus, 1200);
+    setInterval(syncVolume, 250);
+    syncStatus();
+    syncVolume();
+  </script>
+</body>
+</html>
