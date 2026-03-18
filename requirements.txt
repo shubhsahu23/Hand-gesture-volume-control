@@ -1,5 +1,7 @@
-opencv-python
+comtypes
+flask
 mediapipe
+numpy
+opencv-python
 pyautogui
 pycaw
-comtypes
